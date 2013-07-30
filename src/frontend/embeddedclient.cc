@@ -52,7 +52,7 @@
 #endif
 */
 
-#include "stmclient.h"
+#include "embeddedclient.h"
 #include "swrite.h"
 #include "completeterminal.h"
 #include "user.h"
@@ -84,14 +84,6 @@ void EmbeddedClient::shutdown( void )
   overlays.set_title_prefix( wstring( L"" ) );
   output_new_frame();
 
-  /* Restore terminal and terminal-driver state */
-  swrite( STDOUT_FILENO, Terminal::Emulator::close().c_str() );
-  
-  if ( tcsetattr( STDIN_FILENO, TCSANOW, &saved_termios ) < 0 ) {
-    perror( "tcsetattr" );
-    exit( 1 );
-  }
-
   if ( still_connecting() ) {
     fprintf( stderr, "\nmosh did not make a successful connection to %s:%s.\n", ip.c_str(), port.c_str() );
     fprintf( stderr, "Please verify that UDP port %s is not firewalled and can reach the server.\n\n", port.c_str() );
@@ -111,7 +103,6 @@ void EmbeddedClient::main_init( void )
   sel.add_signal( SIGINT );
   sel.add_signal( SIGHUP );
   sel.add_signal( SIGPIPE );
-  sel.add_signal( SIGTSTP );
   sel.add_signal( SIGCONT );
 
   /* get initial window size */
@@ -206,6 +197,8 @@ bool EmbeddedClient::process_user_input( int fd )
 
       overlays.get_prediction_engine().new_user_byte( the_byte, *local_framebuffer );
 
+      const static wstring help_message( L"Commands: Ctrl-Z suspends, \".\" quits, \"^\" gives literal Ctrl-^" );
+
       if ( quit_sequence_started ) {
 	if ( the_byte == '.' ) { /* Quit sequence is Ctrl-^ . */
 	  if ( network->has_remote_addr() && (!network->shutdown_in_progress()) ) {
@@ -225,11 +218,17 @@ bool EmbeddedClient::process_user_input( int fd )
 	}
 
 	quit_sequence_started = false;
+
+	if ( overlays.get_notification_engine().get_notification_string() == help_message ) {
+	  overlays.get_notification_engine().set_notification_string( L"" );
+	}
+
 	continue;
       }
 
       quit_sequence_started = (the_byte == 0x1E);
       if ( quit_sequence_started ) {
+	overlays.get_notification_engine().set_notification_string( help_message, true, false );
 	continue;
       }
 
@@ -344,9 +343,7 @@ void EmbeddedClient::main( void )
       if ( sel.signal( SIGTERM )
            || sel.signal( SIGINT )
            || sel.signal( SIGHUP )
-           || sel.signal( SIGPIPE )
-           || sel.signal( SIGTSTP )
-           || sel.signal( SIGCONT ) ) {
+           || sel.signal( SIGPIPE ) ) {
         /* shutdown signal */
         if ( !network->has_remote_addr() ) {
           break;
@@ -409,7 +406,7 @@ void EmbeddedClient::main( void )
       } else {
         overlays.get_notification_engine().clear_network_exception();
       }
-    } catch ( Network::NetworkException e ) {
+    } catch ( const Network::NetworkException &e ) {
       if ( !network->shutdown_in_progress() ) {
         overlays.get_notification_engine().set_network_exception( e );
       }
@@ -419,7 +416,7 @@ void EmbeddedClient::main( void )
       req.tv_nsec = 200000000; /* 0.2 sec */
       nanosleep( &req, NULL );
       freeze_timestamp();
-    } catch ( Crypto::CryptoException e ) {
+    } catch ( const Crypto::CryptoException &e ) {
       if ( e.fatal ) {
         throw;
       } else {

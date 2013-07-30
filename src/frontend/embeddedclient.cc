@@ -38,7 +38,6 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/ioctl.h>
 #include <sys/types.h>
 #include <pwd.h>
 #include <signal.h>
@@ -95,21 +94,16 @@ void EmbeddedClient::shutdown( void )
   }
 }
 
-void EmbeddedClient::main_init( void )
+void EmbeddedClient::main_init( unsigned short cols, unsigned short rows )
 {
   Select &sel = Select::get_instance();
-  sel.add_signal( SIGWINCH );
   sel.add_signal( SIGTERM );
   sel.add_signal( SIGINT );
   sel.add_signal( SIGHUP );
   sel.add_signal( SIGPIPE );
-  sel.add_signal( SIGCONT );
 
-  /* get initial window size */
-  if ( ioctl( STDIN_FILENO, TIOCGWINSZ, &window_size ) < 0 ) {
-    perror( "ioctl TIOCGWINSZ" );
-    return;
-  }  
+  window_size.ws_col = cols;
+  window_size.ws_row = rows;
 
   /* local state */
   local_framebuffer = new Terminal::Framebuffer( window_size.ws_col, window_size.ws_row );
@@ -243,33 +237,10 @@ bool EmbeddedClient::process_user_input( int fd )
   return true;
 }
 
-bool EmbeddedClient::process_resize( void )
-{
-  /* get new size */
-  if ( ioctl( STDIN_FILENO, TIOCGWINSZ, &window_size ) < 0 ) {
-    perror( "ioctl TIOCGWINSZ" );
-    return false;
-  }
-  
-  /* tell remote emulator */
-  Parser::Resize res( window_size.ws_col, window_size.ws_row );
-  
-  if ( !network->shutdown_in_progress() ) {
-    network->get_current_state().push_back( res );
-  }
-
-  /* note remote emulator will probably reply with its own Resize to adjust our state */
-  
-  /* tell prediction engine */
-  overlays.get_prediction_engine().reset();
-
-  return true;
-}
-
-void EmbeddedClient::main( void )
+void EmbeddedClient::main( unsigned short cols, unsigned short rows )
 {
   /* initialize signal handling and structures */
-  main_init();
+  main_init( cols, rows );
 
   /* prepare to poll for events */
   Select &sel = Select::get_instance();
@@ -333,11 +304,6 @@ void EmbeddedClient::main( void )
 	    network->start_shutdown();
 	  }
 	}
-      }
-
-      if ( sel.signal( SIGWINCH ) ) {
-        /* resize */
-        if ( !process_resize() ) { return; }
       }
 
       if ( sel.signal( SIGTERM )

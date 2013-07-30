@@ -102,7 +102,7 @@ int main( int argc, char *argv[] )
     client.init();
 
     try {
-      client.main();
+      client.main(80, 24);
     } catch ( Network::NetworkException e ) {
       fprintf( stderr, "Network exception: %s: %s\r\n",
 	       e.function.c_str(), strerror( e.the_errno ) );

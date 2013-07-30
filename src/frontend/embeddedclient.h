@@ -33,7 +33,6 @@
 #ifndef EMBEDDED_CLIENT_HPP
 #define EMBEDDED_CLIENT_HPP
 
-#include <sys/ioctl.h>
 #include <termios.h>
 #include <string>
 
@@ -42,13 +41,17 @@
 #include "user.h"
 #include "terminaloverlay.h"
 
+struct my_winsize {
+    unsigned short ws_row, ws_col;
+};
+
 class EmbeddedClient {
 private:
   std::string ip;
   std::string port;
   std::string key;
 
-  struct winsize window_size;
+  struct my_winsize window_size;
 
   Terminal::Framebuffer *local_framebuffer, *new_state;
   Overlay::OverlayManager overlays;
@@ -59,7 +62,7 @@ private:
   bool repaint_requested, quit_sequence_started;
   bool clean_shutdown;
 
-  void main_init( void );
+  void main_init( unsigned short cols, unsigned short rows );
   bool process_network_input( void );
   bool process_user_input( int fd );
   bool process_resize( void );
@@ -104,7 +107,7 @@ public:
 
   void init( void );
   void shutdown( void );
-  void main( void );
+  void main( unsigned short cols, unsigned short rows );
 
   ~EmbeddedClient()
   {

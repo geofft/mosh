@@ -137,10 +137,25 @@ void EmbeddedClient::output_new_frame( void )
   display.downgrade( *new_state );
 
   /* calculate minimal difference from where we are */
-  const string diff( display.new_frame( !repaint_requested,
-					*local_framebuffer,
-					*new_state ) );
-  swrite( STDOUT_FILENO, diff.data(), diff.size() );
+  if ( (local_framebuffer->ds.get_width() != new_state->ds.get_width())
+       || (local_framebuffer->ds.get_height() != new_state->ds.get_height()) ) {
+    printf( "Changed height to %d, width to %d\n",
+	    new_state->ds.get_width(),
+	    new_state->ds.get_height() );
+  } else {
+    for ( int row = 0; row < new_state->ds.get_height(); row++ ) {
+      if ( !(*(local_framebuffer->get_row( row )) == *(new_state->get_row( row ))) ) {
+	const Terminal::Row *r = new_state->get_row( row );
+	printf( "Row %d changed, %zu elements: [", row, r->cells.size() );
+	for ( Terminal::Row::cells_type::const_iterator i = r->cells.begin();
+	      i != r->cells.end();
+	      i++ ) {
+	  printf( "%lc", i->debug_contents() );
+	}
+	printf( " ]\n" );
+      }
+    }
+  }
 
   repaint_requested = false;
 

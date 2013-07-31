@@ -109,10 +109,6 @@ void EmbeddedClient::main_init( unsigned short cols, unsigned short rows )
   local_framebuffer = new Terminal::Framebuffer( window_size.ws_col, window_size.ws_row );
   new_state = new Terminal::Framebuffer( 1, 1 );
 
-  /* initialize screen */
-  string init = display.new_frame( false, *local_framebuffer, *local_framebuffer );
-  swrite( STDOUT_FILENO, init.data(), init.size() );
-
   /* open network */
   Network::UserStream blank;
   Terminal::Complete local_terminal( window_size.ws_col, window_size.ws_row );

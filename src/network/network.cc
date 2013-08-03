@@ -255,9 +255,9 @@ Connection::Connection( const char *desired_ip, const char *desired_port ) /* se
     } catch ( const NetworkException& e ) {
       struct in_addr sin_addr;
       sin_addr.s_addr = desired_ip_addr;
-      fprintf( stderr, "Error binding to IP %s: %s: %s\n",
+      fprintf( stderr, "Error binding to IP %s: %s\n",
 	       inet_ntoa( sin_addr ),
-	       e.function.c_str(), strerror( e.the_errno ) );
+	       e.what() );
     }
   }
 
@@ -265,8 +265,8 @@ Connection::Connection( const char *desired_ip, const char *desired_port ) /* se
   try {
     if ( try_bind( sock(), INADDR_ANY, desired_port_low, desired_port_high ) ) { return; }
   } catch ( const NetworkException& e ) {
-    fprintf( stderr, "Error binding to any interface: %s: %s\n",
-	     e.function.c_str(), strerror( e.the_errno ) );
+    fprintf( stderr, "Error binding to any interface: %s\n",
+	     e.what() );
     throw; /* this time it's fatal */
   }
 

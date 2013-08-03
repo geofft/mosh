@@ -32,6 +32,7 @@
 
 #include <termios.h>
 #include <unistd.h>
+#include <exception>
 
 #include "user.h"
 #include "fatal_assert.h"
@@ -65,8 +66,8 @@ int main( int argc, char *argv[] )
     } else {
       n = new Transport<UserStream, UserStream>( me, remote, NULL, NULL );
     }
-  } catch ( const CryptoException &e ) {
-    fprintf( stderr, "Fatal error: %s\n", e.text.c_str() );
+  } catch ( const std::exception &e ) {
+    fprintf( stderr, "Fatal error: %s\n", e.what() );
     exit( 1 );
   }
 
@@ -164,7 +165,7 @@ int main( int argc, char *argv[] )
 	  n->recv();
 	}
       } catch ( const NetworkException &e ) {
-	fprintf( stderr, "%s: %s\r\n", e.function.c_str(), strerror( e.the_errno ) );
+	fprintf( stderr, "%s\n", e.what() );
 	break;
       } catch ( const CryptoException &e ) {
 	fprintf( stderr, "Cryptographic error: %s\n", e.text.c_str() );

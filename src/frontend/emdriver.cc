@@ -202,10 +202,10 @@ int main( int argc, char *argv[] )
 
 	if ( client.tick() ) { break; }
       }
-    } catch ( Network::NetworkException e ) {
+    } catch ( const Network::NetworkException &e ) {
       fprintf( stderr, "Network exception: %s: %s\r\n",
 	       e.function.c_str(), strerror( e.the_errno ) );
-    } catch ( Crypto::CryptoException e ) {
+    } catch ( const Crypto::CryptoException &e ) {
       fprintf( stderr, "Crypto exception: %s\r\n",
 	       e.text.c_str() );
     }

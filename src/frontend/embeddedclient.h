@@ -49,42 +49,43 @@ private:
 
   unsigned short cols, rows;
 
-  Terminal::Framebuffer *local_framebuffer, *new_state;
   Overlay::OverlayManager overlays;
   Network::Transport< Network::UserStream, Terminal::Complete > *network;
   Terminal::Display display;
 
   std::wstring connecting_notification;
-  bool repaint_requested, quit_sequence_started;
+  bool quit_sequence_started;
   bool clean_shutdown;
 
-  void main_init();
-  bool process_network_input( void );
-  bool process_user_input( int fd );
   bool process_resize( void );
 
   void output_new_frame( void );
 
-  bool still_connecting( void )
+  bool still_connecting( void ) const
   {
     /* Initially, network == NULL */
     return network && ( network->get_remote_state_num() == 0 );
   }
 
 public:
+  /* TODO ew, public member variables */
+  Terminal::Framebuffer *local_framebuffer, *new_state;
+
+  bool process_network_input( void );
+  bool process_user_input( int fd );
+
   EmbeddedClient( const char *s_ip, const char *s_port, const char *s_key, const char *predict_mode,
 		  unsigned int initial_cols, unsigned int initial_rows )
     : ip( s_ip ), port( s_port ), key( s_key ),
       cols(initial_cols), rows(initial_rows),
-      local_framebuffer( NULL ),
-      new_state( NULL ),
       overlays(),
       network( NULL ),
       display( true ), /* use TERM environment var to initialize display */
       connecting_notification(),
-      repaint_requested( false ),
       quit_sequence_started( false ),
-      clean_shutdown( false )
+      clean_shutdown( false ),
+      local_framebuffer( NULL ),
+      new_state( NULL )
   {
     if ( predict_mode ) {
       if ( !strcmp( predict_mode, "always" ) ) {
@@ -104,18 +105,15 @@ public:
 
   void init( void );
   void shutdown( void );
-  void main();
+  bool tick( void );
+
+  const std::vector< int > fds( void ) const { return network->fds(); }
+  int wait_time( void ) const;
+  bool update_framebuffers( void );
+  bool start_shutdown( bool signal );
 
   ~EmbeddedClient()
   {
-    if ( local_framebuffer != NULL ) {
-      delete local_framebuffer;
-    }
-
-    if ( new_state != NULL ) {
-      delete new_state;
-    }
-
     if ( network != NULL ) {
       delete network;
     }

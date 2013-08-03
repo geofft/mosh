@@ -58,7 +58,6 @@
 #include "fatal_assert.h"
 #include "locale_utils.h"
 #include "pty_compat.h"
-#include "select.h"
 #include "timestamp.h"
 
 #include "networktransport.cc"
@@ -73,38 +72,11 @@ void EmbeddedClient::init( void )
   wchar_t tmp[ 128 ];
   swprintf( tmp, 128, L"Nothing received from server on UDP port %d.", port.c_str() );
   connecting_notification = wstring( tmp );
-}
-
-void EmbeddedClient::shutdown( void )
-{
-  /* Restore screen state */
-  overlays.get_notification_engine().set_notification_string( wstring( L"" ) );
-  overlays.get_notification_engine().server_heard( timestamp() );
-  overlays.set_title_prefix( wstring( L"" ) );
-  output_new_frame();
-
-  if ( still_connecting() ) {
-    fprintf( stderr, "\nmosh did not make a successful connection to %s:%s.\n", ip.c_str(), port.c_str() );
-    fprintf( stderr, "Please verify that UDP port %s is not firewalled and can reach the server.\n\n", port.c_str() );
-    fprintf( stderr, "(By default, mosh uses a UDP port between 60000 and 61000. The -p option\nselects a specific UDP port number.)\n" );
-  } else if ( network ) {
-    if ( !clean_shutdown ) {
-      fprintf( stderr, "\n\nmosh did not shut down cleanly. Please note that the\nmosh-server process may still be running on the server.\n" );
-    }
-  }
-}
-
-void EmbeddedClient::main_init()
-{
-  Select &sel = Select::get_instance();
-  sel.add_signal( SIGTERM );
-  sel.add_signal( SIGINT );
-  sel.add_signal( SIGHUP );
-  sel.add_signal( SIGPIPE );
 
   /* local state */
-  local_framebuffer = new Terminal::Framebuffer( cols, rows );
-  new_state = new Terminal::Framebuffer( 1, 1 );
+  /* these will be swapped in the first successful call to update_framebuffers */
+  local_framebuffer = new Terminal::Framebuffer( 1, 1 );
+  new_state = new Terminal::Framebuffer( cols, rows );
 
   /* open network */
   Network::UserStream blank;
@@ -118,11 +90,37 @@ void EmbeddedClient::main_init()
   network->get_current_state().push_back( Parser::Resize( cols, rows ) );
 }
 
-void EmbeddedClient::output_new_frame( void )
+void EmbeddedClient::shutdown( void )
+{
+#if 0
+  /* Restore screen state */
+  overlays.get_notification_engine().set_notification_string( wstring( L"" ) );
+  overlays.get_notification_engine().server_heard( timestamp() );
+  overlays.set_title_prefix( wstring( L"" ) );
+  output_new_frame();
+#endif
+
+  if ( still_connecting() ) {
+    fprintf( stderr, "\nmosh did not make a successful connection to %s:%s.\n", ip.c_str(), port.c_str() );
+    fprintf( stderr, "Please verify that UDP port %s is not firewalled and can reach the server.\n\n", port.c_str() );
+    fprintf( stderr, "(By default, mosh uses a UDP port between 60000 and 61000. The -p option\nselects a specific UDP port number.)\n" );
+  } else if ( network ) {
+    if ( !clean_shutdown ) {
+      fprintf( stderr, "\n\nmosh did not shut down cleanly. Please note that the\nmosh-server process may still be running on the server.\n" );
+    }
+  }
+}
+
+bool EmbeddedClient::update_framebuffers( void )
 {
   if ( !network ) { /* clean shutdown even when not initialized */
-    return;
+    return false;
   }
+
+  /* switch pointers */
+  Terminal::Framebuffer *tmp = new_state;
+  new_state = local_framebuffer;
+  local_framebuffer = tmp;
 
   /* fetch target state */
   *new_state = network->get_latest_remote_state().state.get_fb();
@@ -133,33 +131,7 @@ void EmbeddedClient::output_new_frame( void )
   /* apply any mutations */
   display.downgrade( *new_state );
 
-  /* calculate minimal difference from where we are */
-  if ( (local_framebuffer->ds.get_width() != new_state->ds.get_width())
-       || (local_framebuffer->ds.get_height() != new_state->ds.get_height()) ) {
-    printf( "Changed height to %d, width to %d\n",
-	    new_state->ds.get_width(),
-	    new_state->ds.get_height() );
-  } else {
-    for ( int row = 0; row < new_state->ds.get_height(); row++ ) {
-      if ( !(*(local_framebuffer->get_row( row )) == *(new_state->get_row( row ))) ) {
-	const Terminal::Row *r = new_state->get_row( row );
-	printf( "Row %d changed, %zu elements: [", row, r->cells.size() );
-	for ( Terminal::Row::cells_type::const_iterator i = r->cells.begin();
-	      i != r->cells.end();
-	      i++ ) {
-	  printf( "%lc", i->debug_contents() );
-	}
-	printf( " ]\n" );
-      }
-    }
-  }
-
-  repaint_requested = false;
-
-  /* switch pointers */
-  Terminal::Framebuffer *tmp = new_state;
-  new_state = local_framebuffer;
-  local_framebuffer = tmp;
+  return true;
 }
 
 bool EmbeddedClient::process_network_input( void )
@@ -234,10 +206,6 @@ bool EmbeddedClient::process_user_input( int fd )
 	continue;
       }
 
-      if ( the_byte == 0x0C ) { /* Ctrl-L */
-	repaint_requested = true;
-      }
-
       network->get_current_state().push_back( Parser::UserByte( the_byte ) );		
     }
   }
@@ -245,18 +213,8 @@ bool EmbeddedClient::process_user_input( int fd )
   return true;
 }
 
-void EmbeddedClient::main()
+int EmbeddedClient::wait_time( void ) const
 {
-  /* initialize signal handling and structures */
-  main_init();
-
-  /* prepare to poll for events */
-  Select &sel = Select::get_instance();
-
-  while ( 1 ) {
-    try {
-      output_new_frame();
-
       int wait_time = min( network->wait_time(), overlays.wait_time() );
 
       /* Handle startup "Connecting..." message */
@@ -264,141 +222,94 @@ void EmbeddedClient::main()
 	wait_time = min( 250, wait_time );
       }
 
-      /* poll for events */
-      /* network->fd() can in theory change over time */
-      sel.clear_fds();
-      std::vector< int > fd_list( network->fds() );
-      for ( std::vector< int >::const_iterator it = fd_list.begin();
-	    it != fd_list.end();
-	    it++ ) {
-	sel.add_fd( *it );
-      }
-      sel.add_fd( STDIN_FILENO );
+      return wait_time;
+}
 
-      int active_fds = sel.select( wait_time );
-      if ( active_fds < 0 ) {
-	perror( "select" );
-	break;
-      }
+bool EmbeddedClient::start_shutdown( bool signal )
+{
+  wstring notification( signal ? L"Signal received, shutting down..." : L"Exiting..." );
 
-      bool network_ready_to_read = false;
+  if ( !network->has_remote_addr() ) {
+    return true;
+  } else if ( !network->shutdown_in_progress() ) {
+    overlays.get_notification_engine().set_notification_string( notification, true );
+    network->start_shutdown();
+  }
 
-      for ( std::vector< int >::const_iterator it = fd_list.begin();
-	    it != fd_list.end();
-	    it++ ) {
-	if ( sel.read( *it ) ) {
-	  /* packet received from the network */
-	  /* we only read one socket each run */
-	  network_ready_to_read = true;
-	}
+  return false;
+}
 
-	if ( sel.error( *it ) ) {
-	  /* network problem */
-	  break;
-	}
-      }
+bool EmbeddedClient::tick( void )
+{
+  /* quit if our shutdown has been acknowledged */
+  if ( network->shutdown_in_progress() && network->shutdown_acknowledged() ) {
+    clean_shutdown = true;
+    return true;
+  }
 
-      if ( network_ready_to_read ) {
-	if ( !process_network_input() ) { return; }
-      }
-    
-      if ( sel.read( STDIN_FILENO ) ) {
-	/* input from the user needs to be fed to the network */
-	if ( !process_user_input( STDIN_FILENO ) ) {
-	  if ( !network->has_remote_addr() ) {
-	    break;
-	  } else if ( !network->shutdown_in_progress() ) {
-	    overlays.get_notification_engine().set_notification_string( wstring( L"Exiting..." ), true );
-	    network->start_shutdown();
-	  }
-	}
-      }
+  /* quit after shutdown acknowledgement timeout */
+  if ( network->shutdown_in_progress() && network->shutdown_ack_timed_out() ) {
+    return true;
+  }
 
-      if ( sel.signal( SIGTERM )
-           || sel.signal( SIGINT )
-           || sel.signal( SIGHUP )
-           || sel.signal( SIGPIPE ) ) {
-        /* shutdown signal */
-        if ( !network->has_remote_addr() ) {
-          break;
-        } else if ( !network->shutdown_in_progress() ) {
-          overlays.get_notification_engine().set_notification_string( wstring( L"Signal received, shutting down..." ), true );
-          network->start_shutdown();
-        }
-      }
+  /* quit if we received and acknowledged a shutdown request */
+  if ( network->counterparty_shutdown_ack_sent() ) {
+    clean_shutdown = true;
+    return true;
+  }
 
-      if ( sel.error( STDIN_FILENO ) ) {
-	/* user problem */
-	if ( !network->has_remote_addr() ) {
-	  break;
-	} else if ( !network->shutdown_in_progress() ) {
-	  overlays.get_notification_engine().set_notification_string( wstring( L"Exiting..." ), true );
-	  network->start_shutdown();
-	}
-      }
-
-      /* quit if our shutdown has been acknowledged */
-      if ( network->shutdown_in_progress() && network->shutdown_acknowledged() ) {
-	clean_shutdown = true;
-	break;
-      }
-
-      /* quit after shutdown acknowledgement timeout */
-      if ( network->shutdown_in_progress() && network->shutdown_ack_timed_out() ) {
-	break;
-      }
-
-      /* quit if we received and acknowledged a shutdown request */
-      if ( network->counterparty_shutdown_ack_sent() ) {
-	clean_shutdown = true;
-	break;
-      }
-
-      /* write diagnostic message if can't reach server */
-      if ( still_connecting()
-	   && (!network->shutdown_in_progress())
-	   && (timestamp() - network->get_latest_remote_state().timestamp > 250) ) {
-	if ( timestamp() - network->get_latest_remote_state().timestamp > 15000 ) {
-	  if ( !network->shutdown_in_progress() ) {
-	    overlays.get_notification_engine().set_notification_string( wstring( L"Timed out waiting for server..." ), true );
-	    network->start_shutdown();
-	  }
-	} else {
-	  overlays.get_notification_engine().set_notification_string( connecting_notification );
-	}
-      } else if ( (network->get_remote_state_num() != 0)
-		  && (overlays.get_notification_engine().get_notification_string()
-		      == connecting_notification) ) {
-	overlays.get_notification_engine().set_notification_string( L"" );
-      }
-
-      network->tick();
-
-      const Network::NetworkException *exn = network->get_send_exception();
-      if ( exn ) {
-        overlays.get_notification_engine().set_network_exception( *exn );
-      } else {
-        overlays.get_notification_engine().clear_network_exception();
-      }
-    } catch ( const Network::NetworkException &e ) {
+  /* write diagnostic message if can't reach server */
+  if ( still_connecting()
+       && (!network->shutdown_in_progress())
+       && (timestamp() - network->get_latest_remote_state().timestamp > 250) ) {
+    if ( timestamp() - network->get_latest_remote_state().timestamp > 15000 ) {
       if ( !network->shutdown_in_progress() ) {
-        overlays.get_notification_engine().set_network_exception( e );
+	overlays.get_notification_engine().set_notification_string( wstring( L"Timed out waiting for server..." ), true );
+	network->start_shutdown();
       }
+    } else {
+      overlays.get_notification_engine().set_notification_string( connecting_notification );
+    }
+  } else if ( (network->get_remote_state_num() != 0)
+	      && (overlays.get_notification_engine().get_notification_string()
+		  == connecting_notification) ) {
+    overlays.get_notification_engine().set_notification_string( L"" );
+  }
 
-      struct timespec req;
-      req.tv_sec = 0;
-      req.tv_nsec = 200000000; /* 0.2 sec */
-      nanosleep( &req, NULL );
-      freeze_timestamp();
-    } catch ( const Crypto::CryptoException &e ) {
-      if ( e.fatal ) {
-        throw;
-      } else {
-        wchar_t tmp[ 128 ];
-        swprintf( tmp, 128, L"Crypto exception: %s", e.text.c_str() );
-        overlays.get_notification_engine().set_notification_string( wstring( tmp ) );
-      }
+  network->tick();
+
+  const Network::NetworkException *exn = network->get_send_exception();
+  if ( exn ) {
+    overlays.get_notification_engine().set_network_exception( *exn );
+  } else {
+    overlays.get_notification_engine().clear_network_exception();
+  }
+
+  return false;
+}
+
+#if 0
+bool EmbeddedClient::handle_exception( void ) {
+  try {
+  } catch ( const Network::NetworkException &e ) {
+    if ( !network->shutdown_in_progress() ) {
+      overlays.get_notification_engine().set_network_exception( e );
+    }
+
+    struct timespec req;
+    req.tv_sec = 0;
+    req.tv_nsec = 200000000; /* 0.2 sec */
+    nanosleep( &req, NULL );
+    freeze_timestamp();
+  } catch ( const Crypto::CryptoException &e ) {
+    if ( e.fatal ) {
+      throw;
+    } else {
+      wchar_t tmp[ 128 ];
+      swprintf( tmp, 128, L"Crypto exception: %s", e.text.c_str() );
+      overlays.get_notification_engine().set_notification_string( wstring( tmp ) );
     }
   }
 }
+#endif
 

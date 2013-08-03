@@ -40,6 +40,7 @@
 #include "crypto.h"
 #include "locale_utils.h"
 #include "fatal_assert.h"
+#include "select.h"
 
 void usage( const char *argv0 ) {
   fprintf( stderr, "mosh-client (%s)\n", PACKAGE_STRING );
@@ -47,6 +48,33 @@ void usage( const char *argv0 ) {
   fprintf( stderr, "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.\nThis is free software: you are free to change and redistribute it.\nThere is NO WARRANTY, to the extent permitted by law.\n\n" );
 
   fprintf( stderr, "Usage: %s IP PORT\n       %s -c\n", argv0, argv0 );
+}
+
+void dump_frame_diffs( const EmbeddedClient &client )
+{
+  /* convenience variables */
+  Terminal::Framebuffer *prev = client.local_framebuffer,
+			*next = client.new_state;
+
+  if ( (prev->ds.get_width() != next->ds.get_width())
+       || (prev->ds.get_height() != next->ds.get_height()) ) {
+    printf( "Changed height to %d, width to %d\n",
+	    next->ds.get_width(),
+	    next->ds.get_height() );
+  } else {
+    for ( int row = 0; row < next->ds.get_height(); row++ ) {
+      if ( !(*(prev->get_row( row )) == *(next->get_row( row ))) ) {
+	const Terminal::Row *r = next->get_row( row );
+	printf( "Row %d changed, %zu elements: [", row, r->cells.size() );
+	for ( Terminal::Row::cells_type::const_iterator i = r->cells.begin();
+	      i != r->cells.end();
+	      i++ ) {
+	  printf( "%lc", i->debug_contents() );
+	}
+	printf( " ]\n" );
+      }
+    }
+  }
 }
 
 int main( int argc, char *argv[] )
@@ -101,8 +129,79 @@ int main( int argc, char *argv[] )
     EmbeddedClient client( ip, desired_port, key, predict_mode, 80, 24 );
     client.init();
 
+    /* prepare to poll for events */
+    Select &sel = Select::get_instance();
+    sel.add_signal( SIGTERM );
+    sel.add_signal( SIGINT );
+    sel.add_signal( SIGHUP );
+    sel.add_signal( SIGPIPE );
+
     try {
-      client.main();
+      while ( 1 ) {
+	if ( client.update_framebuffers() ) {
+	  dump_frame_diffs( client );
+	}
+
+	/* poll for events */
+	/* client.fds() can in theory change over time */
+	sel.clear_fds();
+	std::vector< int > fd_list( client.fds() );
+	for ( std::vector< int >::const_iterator it = fd_list.begin();
+	      it != fd_list.end();
+	      it++ ) {
+	  sel.add_fd( *it );
+	}
+	sel.add_fd( STDIN_FILENO );
+
+	int active_fds = sel.select( client.wait_time() );
+	if ( active_fds < 0 ) {
+	  perror( "select" );
+	  break;
+	}
+
+	bool network_ready_to_read = false;
+
+	for ( std::vector< int >::const_iterator it = fd_list.begin();
+	      it != fd_list.end();
+	      it++ ) {
+	  if ( sel.read( *it ) ) {
+	    /* packet received from the network */
+	    /* we only read one socket each run */
+	    network_ready_to_read = true;
+	  }
+
+	  if ( sel.error( *it ) ) {
+	    /* network problem */
+	    break;
+	  }
+	}
+
+	if ( network_ready_to_read ) {
+	  if ( !client.process_network_input() ) { break; }
+	}
+
+	if ( sel.read( STDIN_FILENO ) ) {
+	  /* input from the user needs to be fed to the network */
+	  if ( !client.process_user_input( STDIN_FILENO ) ) {
+	    if ( client.start_shutdown( false ) ) { break; }
+	  }
+	}
+
+	if ( sel.signal( SIGTERM )
+	     || sel.signal( SIGINT )
+	     || sel.signal( SIGHUP )
+	     || sel.signal( SIGPIPE ) ) {
+	  /* shutdown signal */
+	  if ( client.start_shutdown( true ) ) { break; }
+	}
+
+	if ( sel.error( STDIN_FILENO ) ) {
+	  /* user problem */
+	  if ( client.start_shutdown( false ) ) { break; }
+	}
+
+	if ( client.tick() ) { break; }
+      }
     } catch ( Network::NetworkException e ) {
       fprintf( stderr, "Network exception: %s: %s\r\n",
 	       e.function.c_str(), strerror( e.the_errno ) );

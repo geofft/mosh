@@ -51,7 +51,6 @@ private:
 
   Overlay::OverlayManager overlays;
   Network::Transport< Network::UserStream, Terminal::Complete > *network;
-  Terminal::Display display;
 
   std::wstring connecting_notification;
   bool quit_sequence_started;
@@ -80,7 +79,6 @@ public:
       cols(initial_cols), rows(initial_rows),
       overlays(),
       network( NULL ),
-      display( true ), /* use TERM environment var to initialize display */
       connecting_notification(),
       quit_sequence_started( false ),
       clean_shutdown( false ),

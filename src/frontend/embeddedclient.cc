@@ -128,9 +128,6 @@ bool EmbeddedClient::update_framebuffers( void )
   /* apply local overlays */
   overlays.apply( *new_state );
 
-  /* apply any mutations */
-  display.downgrade( *new_state );
-
   return true;
 }
 

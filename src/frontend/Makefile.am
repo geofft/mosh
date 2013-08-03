@@ -5,6 +5,9 @@ LDADD = ../crypto/libmoshcrypto.a ../network/libmoshnetwork.a ../statesync/libmo
 
 mosh_server_LDADD = $(LDADD) $(LIBUTIL)
 
+pkglib_LIBRARIES = libmoshclient.a
+include_HEADERS = embeddedclient.h
+
 bin_PROGRAMS = emdriver
 
 if BUILD_CLIENT
@@ -15,7 +18,10 @@ if BUILD_SERVER
   bin_PROGRAMS += mosh-server
 endif
 
+libmoshclient_a_SOURCES = embeddedclient.cc embeddedclient.h terminaloverlay.cc terminaloverlay.h
+
 mosh_client_SOURCES = mosh-client.cc stmclient.cc stmclient.h terminaloverlay.cc terminaloverlay.h
 mosh_server_SOURCES = mosh-server.cc
 
-emdriver_SOURCES = emdriver.cc embeddedclient.cc embeddedclient.h terminaloverlay.cc terminaloverlay.h
+emdriver_SOURCES = emdriver.cc
+emdriver_LDADD = $(LDADD) libmoshclient.a

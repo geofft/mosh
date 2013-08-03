@@ -98,11 +98,11 @@ int main( int argc, char *argv[] )
   }
 
   try {
-    EmbeddedClient client( ip, desired_port, key, predict_mode );
+    EmbeddedClient client( ip, desired_port, key, predict_mode, 80, 24 );
     client.init();
 
     try {
-      client.main(80, 24);
+      client.main();
     } catch ( Network::NetworkException e ) {
       fprintf( stderr, "Network exception: %s: %s\r\n",
 	       e.function.c_str(), strerror( e.the_errno ) );

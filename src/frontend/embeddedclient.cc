@@ -94,7 +94,7 @@ void EmbeddedClient::shutdown( void )
   }
 }
 
-void EmbeddedClient::main_init( unsigned short cols, unsigned short rows )
+void EmbeddedClient::main_init()
 {
   Select &sel = Select::get_instance();
   sel.add_signal( SIGTERM );
@@ -102,23 +102,20 @@ void EmbeddedClient::main_init( unsigned short cols, unsigned short rows )
   sel.add_signal( SIGHUP );
   sel.add_signal( SIGPIPE );
 
-  window_size.ws_col = cols;
-  window_size.ws_row = rows;
-
   /* local state */
-  local_framebuffer = new Terminal::Framebuffer( window_size.ws_col, window_size.ws_row );
+  local_framebuffer = new Terminal::Framebuffer( cols, rows );
   new_state = new Terminal::Framebuffer( 1, 1 );
 
   /* open network */
   Network::UserStream blank;
-  Terminal::Complete local_terminal( window_size.ws_col, window_size.ws_row );
+  Terminal::Complete local_terminal( cols, rows );
   network = new Network::Transport< Network::UserStream, Terminal::Complete >( blank, local_terminal,
 									       key.c_str(), ip.c_str(), port.c_str() );
 
   network->set_send_delay( 1 ); /* minimal delay on outgoing keystrokes */
 
   /* tell server the size of the terminal */
-  network->get_current_state().push_back( Parser::Resize( window_size.ws_col, window_size.ws_row ) );
+  network->get_current_state().push_back( Parser::Resize( cols, rows ) );
 }
 
 void EmbeddedClient::output_new_frame( void )
@@ -248,10 +245,10 @@ bool EmbeddedClient::process_user_input( int fd )
   return true;
 }
 
-void EmbeddedClient::main( unsigned short cols, unsigned short rows )
+void EmbeddedClient::main()
 {
   /* initialize signal handling and structures */
-  main_init( cols, rows );
+  main_init();
 
   /* prepare to poll for events */
   Select &sel = Select::get_instance();

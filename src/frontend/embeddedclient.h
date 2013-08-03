@@ -41,17 +41,13 @@
 #include "user.h"
 #include "terminaloverlay.h"
 
-struct my_winsize {
-    unsigned short ws_row, ws_col;
-};
-
 class EmbeddedClient {
 private:
   std::string ip;
   std::string port;
   std::string key;
 
-  struct my_winsize window_size;
+  unsigned short cols, rows;
 
   Terminal::Framebuffer *local_framebuffer, *new_state;
   Overlay::OverlayManager overlays;
@@ -62,7 +58,7 @@ private:
   bool repaint_requested, quit_sequence_started;
   bool clean_shutdown;
 
-  void main_init( unsigned short cols, unsigned short rows );
+  void main_init();
   bool process_network_input( void );
   bool process_user_input( int fd );
   bool process_resize( void );
@@ -76,9 +72,10 @@ private:
   }
 
 public:
-  EmbeddedClient( const char *s_ip, const char *s_port, const char *s_key, const char *predict_mode )
+  EmbeddedClient( const char *s_ip, const char *s_port, const char *s_key, const char *predict_mode,
+		  unsigned int initial_cols, unsigned int initial_rows )
     : ip( s_ip ), port( s_port ), key( s_key ),
-      window_size(),
+      cols(initial_cols), rows(initial_rows),
       local_framebuffer( NULL ),
       new_state( NULL ),
       overlays(),
@@ -107,7 +104,7 @@ public:
 
   void init( void );
   void shutdown( void );
-  void main( unsigned short cols, unsigned short rows );
+  void main();
 
   ~EmbeddedClient()
   {

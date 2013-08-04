@@ -6,7 +6,7 @@ LDADD = ../crypto/libmoshcrypto.a ../network/libmoshnetwork.a ../statesync/libmo
 mosh_server_LDADD = $(LDADD) $(LIBUTIL)
 
 pkglib_LIBRARIES = libmoshclient.a
-include_HEADERS = embeddedclient.h
+include_HEADERS = embeddedclient.h terminaloverlay.h
 
 bin_PROGRAMS = emdriver
 

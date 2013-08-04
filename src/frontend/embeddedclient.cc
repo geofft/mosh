@@ -131,6 +131,12 @@ bool EmbeddedClient::update_framebuffers( void )
   return true;
 }
 
+bool EmbeddedClient::still_connecting( void ) const
+{
+  /* Initially, network == NULL */
+  return network && ( network->get_remote_state_num() == 0 );
+}
+
 void EmbeddedClient::process_network_input( void )
 {
   network->recv();
@@ -194,6 +200,10 @@ bool EmbeddedClient::process_user_input( char *buf, size_t size )
   }
 
   return true;
+}
+const std::vector< int > EmbeddedClient::fds( void ) const
+{
+  return network->fds();
 }
 
 int EmbeddedClient::wait_time( void ) const
@@ -299,4 +309,11 @@ bool EmbeddedClient::handle_exception( const std::exception &e ) {
   }
 
   return false;
+}
+
+EmbeddedClient::~EmbeddedClient()
+{
+  if ( network != NULL ) {
+    delete network;
+  }
 }

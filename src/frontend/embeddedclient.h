@@ -36,10 +36,16 @@
 #include <termios.h>
 #include <string>
 
-#include "completeterminal.h"
-#include "networktransport.h"
-#include "user.h"
 #include "terminaloverlay.h"
+
+namespace Terminal {
+    class Complete;
+    class Framebuffer;
+};
+namespace Network {
+    class UserStream;
+    template < class T, class U > class Transport;
+}
 
 class EmbeddedClient {
 private:
@@ -60,11 +66,7 @@ private:
 
   void output_new_frame( void );
 
-  bool still_connecting( void ) const
-  {
-    /* Initially, network == NULL */
-    return network && ( network->get_remote_state_num() == 0 );
-  }
+  bool still_connecting( void ) const;
 
 public:
   /* TODO ew, public member variables */
@@ -105,18 +107,13 @@ public:
   void shutdown( void );
   bool tick( void );
 
-  const std::vector< int > fds( void ) const { return network->fds(); }
+  const std::vector< int > fds( void ) const;
   int wait_time( void ) const;
   bool update_framebuffers( void );
   bool start_shutdown( bool signal );
   bool handle_exception( const std::exception &e );
 
-  ~EmbeddedClient()
-  {
-    if ( network != NULL ) {
-      delete network;
-    }
-  }
+  ~EmbeddedClient();
 
   /* unused */
   EmbeddedClient( const EmbeddedClient & );

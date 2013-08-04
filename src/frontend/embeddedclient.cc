@@ -144,24 +144,12 @@ void EmbeddedClient::process_network_input( void )
   overlays.get_prediction_engine().set_local_frame_late_acked( network->get_latest_remote_state().state.get_echo_ack() );
 }
 
-bool EmbeddedClient::process_user_input( int fd )
+bool EmbeddedClient::process_user_input( char *buf, size_t size )
 {
-  const int buf_size = 16384;
-  char buf[ buf_size ];
-
-  /* fill buffer if possible */
-  ssize_t bytes_read = read( fd, buf, buf_size );
-  if ( bytes_read == 0 ) { /* EOF */
-    return false;
-  } else if ( bytes_read < 0 ) {
-    perror( "read" );
-    return false;
-  }
-
   if ( !network->shutdown_in_progress() ) {
     overlays.get_prediction_engine().set_local_frame_sent( network->get_sent_state_last() );
 
-    for ( int i = 0; i < bytes_read; i++ ) {
+    for ( unsigned int i = 0; i < size; i++ ) {
       char the_byte = buf[ i ];
 
       overlays.get_prediction_engine().new_user_byte( the_byte, *local_framebuffer );

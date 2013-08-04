@@ -71,7 +71,7 @@ public:
   Terminal::Framebuffer *local_framebuffer, *new_state;
 
   void process_network_input( void );
-  bool process_user_input( int fd );
+  bool process_user_input( char *buf, size_t size );
 
   EmbeddedClient( const char *s_ip, const char *s_port, const char *s_key, const char *predict_mode,
 		  unsigned int initial_cols, unsigned int initial_rows )

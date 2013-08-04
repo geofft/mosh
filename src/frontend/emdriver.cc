@@ -180,8 +180,20 @@ int main( int argc, char *argv[] )
 	}
 
 	if ( sel.read( STDIN_FILENO ) ) {
+	  const int buf_size = 16384;
+	  char buf[ buf_size ];
+
+	  /* fill buffer if possible */
+	  ssize_t bytes_read = read( STDIN_FILENO, buf, buf_size );
+	  if ( bytes_read == 0 ) { /* EOF */
+	    if ( client.start_shutdown( false ) ) { break; }
+	  } else if ( bytes_read < 0 ) {
+	    perror( "read" );
+	    if ( client.start_shutdown( false ) ) { break; }
+	  }
+
 	  /* input from the user needs to be fed to the network */
-	  if ( !client.process_user_input( STDIN_FILENO ) ) {
+	  if ( !client.process_user_input( buf, bytes_read ) ) {
 	    if ( client.start_shutdown( false ) ) { break; }
 	  }
 	}

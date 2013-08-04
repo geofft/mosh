@@ -176,7 +176,7 @@ int main( int argc, char *argv[] )
 	}
 
 	if ( network_ready_to_read ) {
-	  if ( !client.process_network_input() ) { break; }
+	  client.process_network_input();
 	}
 
 	if ( sel.read( STDIN_FILENO ) ) {

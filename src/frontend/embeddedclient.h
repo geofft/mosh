@@ -70,7 +70,7 @@ public:
   /* TODO ew, public member variables */
   Terminal::Framebuffer *local_framebuffer, *new_state;
 
-  bool process_network_input( void );
+  void process_network_input( void );
   bool process_user_input( int fd );
 
   EmbeddedClient( const char *s_ip, const char *s_port, const char *s_key, const char *predict_mode,

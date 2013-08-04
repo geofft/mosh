@@ -131,7 +131,7 @@ bool EmbeddedClient::update_framebuffers( void )
   return true;
 }
 
-bool EmbeddedClient::process_network_input( void )
+void EmbeddedClient::process_network_input( void )
 {
   network->recv();
   
@@ -142,8 +142,6 @@ bool EmbeddedClient::process_network_input( void )
   overlays.get_prediction_engine().set_local_frame_acked( network->get_sent_state_acked() );
   overlays.get_prediction_engine().set_send_interval( network->send_interval() );
   overlays.get_prediction_engine().set_local_frame_late_acked( network->get_latest_remote_state().state.get_echo_ack() );
-
-  return true;
 }
 
 bool EmbeddedClient::process_user_input( int fd )

@@ -109,6 +109,7 @@ public:
   int wait_time( void ) const;
   bool update_framebuffers( void );
   bool start_shutdown( bool signal );
+  bool handle_exception( const std::exception &e );
 
   ~EmbeddedClient()
   {

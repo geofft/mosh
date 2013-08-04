@@ -135,8 +135,8 @@ int main( int argc, char *argv[] )
     sel.add_signal( SIGHUP );
     sel.add_signal( SIGPIPE );
 
-    try {
-      while ( 1 ) {
+    while ( 1 ) {
+      try {
 	if ( client.update_framebuffers() ) {
 	  dump_frame_diffs( client );
 	}
@@ -200,13 +200,9 @@ int main( int argc, char *argv[] )
 	}
 
 	if ( client.tick() ) { break; }
+      } catch ( const std::exception &e ) {
+	if ( !client.handle_exception( e ) ) { throw; }
       }
-    } catch ( const Network::NetworkException &e ) {
-      fprintf( stderr, "Network exception: %s\r\n",
-	       e.what() );
-    } catch ( const Crypto::CryptoException &e ) {
-      fprintf( stderr, "Crypto exception: %s\r\n",
-	       e.what() );
     }
 
     client.shutdown();

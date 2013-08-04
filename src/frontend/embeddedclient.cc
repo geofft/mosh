@@ -285,10 +285,10 @@ bool EmbeddedClient::tick( void )
   return false;
 }
 
-#if 0
-bool EmbeddedClient::handle_exception( void ) {
-  try {
-  } catch ( const Network::NetworkException &e ) {
+bool EmbeddedClient::handle_exception( const std::exception &e ) {
+  const Network::NetworkException *ne;
+  const Crypto::CryptoException *ce;
+  if ( ne = dynamic_cast<const Network::NetworkException *>( &e ) ) {
     if ( !network->shutdown_in_progress() ) {
       overlays.get_notification_engine().set_network_exception( e );
     }
@@ -298,15 +298,19 @@ bool EmbeddedClient::handle_exception( void ) {
     req.tv_nsec = 200000000; /* 0.2 sec */
     nanosleep( &req, NULL );
     freeze_timestamp();
-  } catch ( const Crypto::CryptoException &e ) {
-    if ( e.fatal ) {
-      throw;
+
+    return true;
+  } else if ( ce = dynamic_cast<const Crypto::CryptoException *>( &e ) ) {
+    if ( ce->fatal ) {
+      return false;
     } else {
       wchar_t tmp[ 128 ];
-      swprintf( tmp, 128, L"Crypto exception: %s", e.what() );
+      swprintf( tmp, 128, L"Crypto exception: %s", ce->what() );
       overlays.get_notification_engine().set_notification_string( wstring( tmp ) );
     }
-  }
-}
-#endif
 
+    return true;
+  }
+
+  return false;
+}

@@ -218,12 +218,6 @@ int main( int argc, char *argv[] )
     }
 
     client.shutdown();
-  } catch ( const Network::NetworkException &e ) {
-    fprintf( stderr, "Network exception: %s\r\n",
-	     e.what() );
-  } catch ( const Crypto::CryptoException &e ) {
-    fprintf( stderr, "Crypto exception: %s\r\n",
-	     e.what() );
   } catch ( const std::exception &e ) {
     fprintf( stderr, "Error: %s\r\n", e.what() );
   }

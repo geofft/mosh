@@ -39,6 +39,7 @@
 #include "terminaloverlay.h"
 #include "network.h"
 #include "transportsender.h"
+#include "parser.h"
 
 using namespace Overlay;
 using namespace Network;
@@ -698,7 +699,7 @@ void PredictionEngine::new_user_byte( char the_byte, const Framebuffer &fb )
   }
   last_byte = the_byte;
 
-  list<Parser::Action *> actions( parser.input( the_byte ) );
+  list<Parser::Action *> actions( parser->input( the_byte ) );
 
   for ( list<Parser::Action *>::iterator it = actions.begin();
         it != actions.end();
@@ -946,4 +947,23 @@ bool PredictionEngine::active( void ) const
   }
 
   return false;
+}
+
+PredictionEngine::PredictionEngine( void ) :
+  last_byte( 0 ), parser(new Parser::UTF8Parser), overlays(), cursors(),
+  local_frame_sent( 0 ), local_frame_acked( 0 ),
+  local_frame_late_acked( 0 ),
+  prediction_epoch( 1 ), confirmed_epoch( 0 ),
+  flagging( false ),
+  srtt_trigger( false ),
+  glitch_trigger( 0 ),
+  last_quick_confirmation( 0 ),
+  send_interval( 250 ),
+  last_height( 0 ), last_width( 0 ),
+  display_preference( Adaptive )
+{
+}
+
+PredictionEngine::~PredictionEngine( void ) {
+  delete parser;
 }

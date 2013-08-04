@@ -34,11 +34,14 @@
 #define TERMINAL_OVERLAY_HPP
 
 #include "terminalframebuffer.h"
-#include "parser.h"
 
 #include <vector>
 #include <limits.h>
 #include <exception>
+
+namespace Parser {
+  class UTF8Parser;
+}
 
 namespace Overlay {
   using namespace Terminal;
@@ -183,7 +186,7 @@ namespace Overlay {
     static const uint64_t GLITCH_FLAG_THRESHOLD = 5000; /* prediction outstanding this long => underline */
 
     char last_byte;
-    Parser::UTF8Parser parser;
+    Parser::UTF8Parser *parser;
 
     typedef list<ConditionalOverlayRow> overlays_type;
     overlays_type overlays;
@@ -259,19 +262,8 @@ namespace Overlay {
           : INT_MAX;
     }
 
-    PredictionEngine( void ) : last_byte( 0 ), parser(), overlays(), cursors(),
-			       local_frame_sent( 0 ), local_frame_acked( 0 ),
-			       local_frame_late_acked( 0 ),
-			       prediction_epoch( 1 ), confirmed_epoch( 0 ),
-			       flagging( false ),
-			       srtt_trigger( false ),
-			       glitch_trigger( 0 ),
-			       last_quick_confirmation( 0 ),
-			       send_interval( 250 ),
-			       last_height( 0 ), last_width( 0 ),
-			       display_preference( Adaptive )
-    {
-    }
+    PredictionEngine( void );
+    ~PredictionEngine( void );
   };
 
   class TitleEngine {

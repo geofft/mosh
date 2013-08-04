@@ -34,8 +34,6 @@
 #define TERMINAL_OVERLAY_HPP
 
 #include "terminalframebuffer.h"
-#include "network.h"
-#include "transportsender.h"
 #include "parser.h"
 
 #include <vector>
@@ -44,7 +42,6 @@
 
 namespace Overlay {
   using namespace Terminal;
-  using namespace Network;
   using std::deque;
   using std::list;
   using std::vector;
@@ -162,34 +159,11 @@ namespace Overlay {
     void server_acked( uint64_t s_last_acked ) { last_acked_state = s_last_acked; }
     int wait_time( void ) const;
 
-    void set_notification_string( const wstring &s_message, bool permanent = false, bool s_show_quit_keystroke = true )
-    {
-      message = s_message;
-      if ( permanent ) {
-        message_expiration = -1;
-      } else {
-        message_expiration = timestamp() + 1000;
-      }
-      message_is_network_exception = false;
-      show_quit_keystroke = s_show_quit_keystroke;
-    }
+    void set_notification_string( const wstring &s_message, bool permanent = false, bool s_show_quit_keystroke = true );
 
-    void set_network_exception( const std::exception &e )
-    {
-      wchar_t tmp[ 128 ];
-      swprintf( tmp, 128, L"%s", e.what() );
+    void set_network_exception( const std::exception &e );
 
-      message = tmp;
-      message_is_network_exception = true;
-      message_expiration = timestamp() + Network::ACK_INTERVAL + 100;
-    }
-
-    void clear_network_exception()
-    {
-      if ( message_is_network_exception ) {
-	message_expiration = std::min( message_expiration, timestamp() + 1000 );
-      }
-    }
+    void clear_network_exception();
 
     NotificationEngine();
   };

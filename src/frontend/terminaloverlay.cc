@@ -37,8 +37,11 @@
 #include <limits.h>
 
 #include "terminaloverlay.h"
+#include "network.h"
+#include "transportsender.h"
 
 using namespace Overlay;
+using namespace Network;
 using std::max;
 using std::mem_fun_ref;
 using std::bind2nd;
@@ -334,6 +337,35 @@ int NotificationEngine::wait_time( void ) const
   }
 
   return next_expiry;
+}
+
+void NotificationEngine::set_notification_string( const wstring &s_message, bool permanent, bool s_show_quit_keystroke )
+{
+  message = s_message;
+  if ( permanent ) {
+    message_expiration = -1;
+  } else {
+    message_expiration = timestamp() + 1000;
+  }
+  message_is_network_exception = false;
+  show_quit_keystroke = s_show_quit_keystroke;
+}
+
+void NotificationEngine::set_network_exception( const std::exception &e )
+{
+  wchar_t tmp[ 128 ];
+  swprintf( tmp, 128, L"%s", e.what() );
+
+  message = tmp;
+  message_is_network_exception = true;
+  message_expiration = timestamp() + Network::ACK_INTERVAL + 100;
+}
+
+void NotificationEngine::clear_network_exception()
+{
+  if ( message_is_network_exception ) {
+    message_expiration = std::min( message_expiration, timestamp() + 1000 );
+  }
 }
 
 void OverlayManager::apply( Framebuffer &fb )

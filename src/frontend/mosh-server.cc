@@ -46,9 +46,6 @@
 #include <pwd.h>
 #include <typeinfo>
 #include <signal.h>
-#ifdef HAVE_UTEMPTER
-#include <utempter.h>
-#endif
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -356,6 +353,7 @@ int run_server( const char *desired_ip, const char *desired_port,
 
   printf( "\nMOSH CONNECT %d %s\n", network->port(), network->get_key().c_str() );
   fflush( stdout );
+  fgetc( stdin );
 
   /* don't let signals kill us */
   struct sigaction sa;
@@ -377,6 +375,7 @@ int run_server( const char *desired_ip, const char *desired_port,
   fprintf( stderr, "\nmosh-server (%s)\n", PACKAGE_STRING );
   fprintf( stderr, "Copyright 2012 Keith Winstein <mosh-devel@mit.edu>\n" );
   fprintf( stderr, "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.\nThis is free software: you are free to change and redistribute it.\nThere is NO WARRANTY, to the extent permitted by law.\n\n" );
+  fprintf( stderr, "Press Enter to detach.\n" );
 
   fprintf( stderr, "[mosh-server detached, pid = %d]\n", (int)getpid() );
 
@@ -488,11 +487,6 @@ int run_server( const char *desired_ip, const char *desired_port,
   } else {
     /* parent */
 
-#ifdef HAVE_UTEMPTER
-    /* make utmp entry */
-    utempter_add_record( master, utmp_entry );
-#endif
-
     try {
       serve( master, terminal, *network );
     } catch ( const Network::NetworkException &e ) {
@@ -502,10 +496,6 @@ int run_server( const char *desired_ip, const char *desired_port,
       fprintf( stderr, "Crypto exception: %s\n",
 	       e.what() );
     }
-
-    #ifdef HAVE_UTEMPTER
-    utempter_remove_record( master );
-    #endif
 
     if ( close( master ) < 0 ) {
       perror( "close" );

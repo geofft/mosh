@@ -34,6 +34,7 @@
 
 #include <stdlib.h>
 #include <getopt.h>
+#include <unistd.h>
 
 #include "embeddedclient.h"
 #include "crypto.h"

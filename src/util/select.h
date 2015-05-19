@@ -47,9 +47,11 @@
    Any signals blocked by calling sigprocmask() outside this code will still be
    received during Select::select().  So don't do that. */
 
-class Select {
+class Select
+{
 public:
-  static Select &get_instance( void ) {
+  static Select &get_instance(void)
+  {
     /* COFU may or may not be thread-safe, depending on compiler */
     static Select instance;
     return instance;
@@ -57,72 +59,64 @@ public:
 
 private:
   Select()
-    : max_fd( -1 )
-    , got_any_signal( 0 )
+      : max_fd(-1), got_any_signal(0)
 
-    /* These initializations are not used; they are just
-       here to appease -Weffc++. */
-    , all_fds( dummy_fd_set )
-    , read_fds( dummy_fd_set )
-    , error_fds( dummy_fd_set )
-    , empty_sigset( dummy_sigset )
+        /* These initializations are not used; they are just
+           here to appease -Weffc++. */
+        ,
+        all_fds(dummy_fd_set), read_fds(dummy_fd_set), error_fds(dummy_fd_set),
+        empty_sigset(dummy_sigset)
   {
-    FD_ZERO( &all_fds );
-    FD_ZERO( &read_fds );
-    FD_ZERO( &error_fds );
+    FD_ZERO(&all_fds);
+    FD_ZERO(&read_fds);
+    FD_ZERO(&error_fds);
 
     clear_got_signal();
-    fatal_assert( 0 == sigemptyset( &empty_sigset ) );
+    fatal_assert(0 == sigemptyset(&empty_sigset));
   }
 
-  void clear_got_signal( void )
-  {
-    memset( got_signal, 0, sizeof( got_signal ) );
-  }
+  void clear_got_signal(void) { memset(got_signal, 0, sizeof(got_signal)); }
 
   /* not implemented */
-  Select( const Select & );
-  Select &operator=( const Select & );
+  Select(const Select &);
+  Select &operator=(const Select &);
 
 public:
-  void add_fd( int fd )
+  void add_fd(int fd)
   {
-    if ( fd > max_fd ) {
+    if (fd > max_fd) {
       max_fd = fd;
     }
-    FD_SET( fd, &all_fds );
+    FD_SET(fd, &all_fds);
   }
 
-  void clear_fds( void )
-  {
-    FD_ZERO( &all_fds );
-  }
+  void clear_fds(void) { FD_ZERO(&all_fds); }
 
-  void add_signal( int signum )
+  void add_signal(int signum)
   {
-    fatal_assert( signum >= 0 );
-    fatal_assert( signum <= MAX_SIGNAL_NUMBER );
+    fatal_assert(signum >= 0);
+    fatal_assert(signum <= MAX_SIGNAL_NUMBER);
 
     /* Block the signal so we don't get it outside of pselect(). */
     sigset_t to_block;
-    fatal_assert( 0 == sigemptyset( &to_block ) );
-    fatal_assert( 0 == sigaddset( &to_block, signum ) );
-    fatal_assert( 0 == sigprocmask( SIG_BLOCK, &to_block, NULL ) );
+    fatal_assert(0 == sigemptyset(&to_block));
+    fatal_assert(0 == sigaddset(&to_block, signum));
+    fatal_assert(0 == sigprocmask(SIG_BLOCK, &to_block, NULL));
 
     /* Register a handler, which will only be called when pselect()
        is interrupted by a (possibly queued) signal. */
     struct sigaction sa;
     sa.sa_flags = 0;
     sa.sa_handler = &handle_signal;
-    fatal_assert( 0 == sigfillset( &sa.sa_mask ) );
-    fatal_assert( 0 == sigaction( signum, &sa, NULL ) );
+    fatal_assert(0 == sigfillset(&sa.sa_mask));
+    fatal_assert(0 == sigaction(signum, &sa, NULL));
   }
 
   /* timeout unit: milliseconds; negative timeout means wait forever */
-  int select( int timeout )
+  int select(int timeout)
   {
-    memcpy( &read_fds,  &all_fds, sizeof( read_fds  ) );
-    memcpy( &error_fds, &all_fds, sizeof( error_fds ) );
+    memcpy(&read_fds, &all_fds, sizeof(read_fds));
+    memcpy(&error_fds, &all_fds, sizeof(error_fds));
     clear_got_signal();
     got_any_signal = 0;
 
@@ -130,35 +124,36 @@ public:
     struct timespec ts;
     struct timespec *tsp = NULL;
 
-    if ( timeout >= 0 ) {
-      ts.tv_sec  = timeout / 1000;
-      ts.tv_nsec = 1000000 * (long( timeout ) % 1000);
+    if (timeout >= 0) {
+      ts.tv_sec = timeout / 1000;
+      ts.tv_nsec = 1000000 * (long(timeout) % 1000);
       tsp = &ts;
     }
 
-    int ret = ::pselect( max_fd + 1, &read_fds, NULL, &error_fds, tsp, &empty_sigset );
+    int ret =
+        ::pselect(max_fd + 1, &read_fds, NULL, &error_fds, tsp, &empty_sigset);
 #else
     struct timeval tv;
     struct timeval *tvp = NULL;
     sigset_t old_sigset;
 
-    if ( timeout >= 0 ) {
-      tv.tv_sec  = timeout / 1000;
-      tv.tv_usec = 1000 * (long( timeout ) % 1000);
+    if (timeout >= 0) {
+      tv.tv_sec = timeout / 1000;
+      tv.tv_usec = 1000 * (long(timeout) % 1000);
       tvp = &tv;
     }
 
-    int ret = sigprocmask( SIG_SETMASK, &empty_sigset, &old_sigset );
-    if ( ret != -1 ) {
-      ret = ::select( max_fd + 1, &read_fds, NULL, &error_fds, tvp );
-      sigprocmask( SIG_SETMASK, &old_sigset, NULL );
+    int ret = sigprocmask(SIG_SETMASK, &empty_sigset, &old_sigset);
+    if (ret != -1) {
+      ret = ::select(max_fd + 1, &read_fds, NULL, &error_fds, tvp);
+      sigprocmask(SIG_SETMASK, &old_sigset, NULL);
     }
 #endif
 
-    if ( ( ret == -1 ) && ( errno == EINTR ) ) {
+    if ((ret == -1) && (errno == EINTR)) {
       /* The user should process events as usual. */
-      FD_ZERO( &read_fds );
-      FD_ZERO( &error_fds );
+      FD_ZERO(&read_fds);
+      FD_ZERO(&error_fds);
       ret = 0;
     }
 
@@ -167,47 +162,44 @@ public:
     return ret;
   }
 
-  bool read( int fd )
+  bool read(int fd)
 #if FD_ISSET_IS_CONST
-    const
+      const
 #endif
   {
-    assert( FD_ISSET( fd, &all_fds ) );
-    return FD_ISSET( fd, &read_fds );
+    assert(FD_ISSET(fd, &all_fds));
+    return FD_ISSET(fd, &read_fds);
   }
 
-  bool error( int fd )
+  bool error(int fd)
 #if FD_ISSET_IS_CONST
-    const
+      const
 #endif
   {
-    assert( FD_ISSET( fd, &all_fds ) );
-    return FD_ISSET( fd, &error_fds );
+    assert(FD_ISSET(fd, &all_fds));
+    return FD_ISSET(fd, &error_fds);
   }
 
-  bool signal( int signum ) const
+  bool signal(int signum) const
   {
-    fatal_assert( signum >= 0 );
-    fatal_assert( signum <= MAX_SIGNAL_NUMBER );
-    return got_signal[ signum ];
+    fatal_assert(signum >= 0);
+    fatal_assert(signum <= MAX_SIGNAL_NUMBER);
+    return got_signal[signum];
   }
 
-  bool any_signal( void ) const
-  {
-    return got_any_signal;
-  }
+  bool any_signal(void) const { return got_any_signal; }
 
 private:
   static const int MAX_SIGNAL_NUMBER = 64;
 
-  static void handle_signal( int signum );
+  static void handle_signal(int signum);
 
   int max_fd;
 
   /* We assume writes to these ints are atomic, though we also try to mask out
      concurrent signal handlers. */
   int got_any_signal;
-  int got_signal[ MAX_SIGNAL_NUMBER + 1 ];
+  int got_signal[MAX_SIGNAL_NUMBER + 1];
 
   fd_set all_fds, read_fds, error_fds;
 

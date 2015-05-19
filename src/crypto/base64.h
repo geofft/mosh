@@ -30,8 +30,8 @@
     also delete it here.
 */
 
-bool base64_decode( const char *b64, const size_t b64_len,
-		    char *raw, size_t *raw_len );
+bool base64_decode(const char *b64, const size_t b64_len, char *raw,
+                   size_t *raw_len);
 
-bool base64_encode( const char *raw, const size_t raw_len,
-		    char *b64, size_t b64_len );
+bool base64_encode(const char *raw, const size_t raw_len, char *b64,
+                   size_t b64_len);

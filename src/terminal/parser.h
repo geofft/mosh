@@ -45,50 +45,47 @@
 #include "parserstate.h"
 #include "parserstatefamily.h"
 
-namespace Parser {
+namespace Parser
+{
   extern const StateFamily family;
 
-  class Parser {
+  class Parser
+  {
   private:
     State const *state;
 
   public:
-    Parser() : state( &family.s_Ground ) {}
+    Parser() : state(&family.s_Ground) {}
 
-    Parser( const Parser &other );
-    Parser & operator=( const Parser & );
+    Parser(const Parser &other);
+    Parser &operator=(const Parser &);
     ~Parser() {}
 
-    std::list<Action *> input( wchar_t ch );
+    std::list<Action *> input(wchar_t ch);
 
-    bool operator==( const Parser &x ) const
-    {
-      return state == x.state;
-    }
+    bool operator==(const Parser &x) const { return state == x.state; }
 
-    bool is_grounded( void ) const { return state == &family.s_Ground; }
+    bool is_grounded(void) const { return state == &family.s_Ground; }
   };
 
   static const size_t BUF_SIZE = 8;
 
-  class UTF8Parser {
+  class UTF8Parser
+  {
   private:
     Parser parser;
 
-    char buf[ BUF_SIZE ];
+    char buf[BUF_SIZE];
     size_t buf_len;
 
   public:
     UTF8Parser();
 
-    std::list<Action *> input( char c );
+    std::list<Action *> input(char c);
 
-    bool operator==( const UTF8Parser &x ) const
-    {
-      return parser == x.parser;
-    }
+    bool operator==(const UTF8Parser &x) const { return parser == x.parser; }
 
-    bool is_grounded( void ) const { return parser.is_grounded(); }
+    bool is_grounded(void) const { return parser.is_grounded(); }
   };
 }
 

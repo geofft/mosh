@@ -41,7 +41,7 @@
 
 using namespace Network;
 
-int main( int argc, char *argv[] )
+int main(int argc, char *argv[])
 {
   bool server = true;
   char *key;
@@ -53,128 +53,130 @@ int main( int argc, char *argv[] )
   Transport<UserStream, UserStream> *n;
 
   try {
-    if ( argc > 1 ) {
+    if (argc > 1) {
       server = false;
       /* client */
-      
-      key = argv[ 1 ];
-      ip = argv[ 2 ];
-      port = argv[ 3 ];
-      
-      n = new Transport<UserStream, UserStream>( me, remote, key, ip, port );
+
+      key = argv[1];
+      ip = argv[2];
+      port = argv[3];
+
+      n = new Transport<UserStream, UserStream>(me, remote, key, ip, port);
     } else {
-      n = new Transport<UserStream, UserStream>( me, remote, NULL, NULL );
+      n = new Transport<UserStream, UserStream>(me, remote, NULL, NULL);
     }
-  } catch ( const CryptoException &e ) {
-    fprintf( stderr, "Fatal error: %s\n", e.text.c_str() );
-    exit( 1 );
+  } catch (const CryptoException &e) {
+    fprintf(stderr, "Fatal error: %s\n", e.text.c_str());
+    exit(1);
   }
 
-  fprintf( stderr, "Port bound is %s, key is %s\n", n->port().c_str(), n->get_key().c_str() );
+  fprintf(stderr, "Port bound is %s, key is %s\n", n->port().c_str(),
+          n->get_key().c_str());
 
-  if ( server ) {
+  if (server) {
     Select &sel = Select::get_instance();
     uint64_t last_num = n->get_remote_state_num();
-    while ( true ) {
+    while (true) {
       try {
-	sel.clear_fds();
-	std::vector< int > fd_list( n->fds() );
-	assert( fd_list.size() == 1 ); /* servers don't hop */
-	int network_fd = fd_list.back();
-	sel.add_fd( network_fd );
-	if ( sel.select( n->wait_time() ) < 0 ) {
-	  perror( "select" );
-	  exit( 1 );
-	}
-	
-	n->tick();
+        sel.clear_fds();
+        std::vector<int> fd_list(n->fds());
+        assert(fd_list.size() == 1); /* servers don't hop */
+        int network_fd = fd_list.back();
+        sel.add_fd(network_fd);
+        if (sel.select(n->wait_time()) < 0) {
+          perror("select");
+          exit(1);
+        }
 
-	if ( sel.read( network_fd ) ) {
-	  n->recv();
+        n->tick();
 
-	  if ( n->get_remote_state_num() != last_num ) {
-	    fprintf( stderr, "[%d=>%d %s]", (int)last_num, (int)n->get_remote_state_num(), n->get_remote_diff().c_str() );
-	    last_num = n->get_remote_state_num();
-	  }
-	}
-      } catch ( const CryptoException &e ) {
-	fprintf( stderr, "Cryptographic error: %s\n", e.text.c_str() );
+        if (sel.read(network_fd)) {
+          n->recv();
+
+          if (n->get_remote_state_num() != last_num) {
+            fprintf(stderr, "[%d=>%d %s]", (int)last_num,
+                    (int)n->get_remote_state_num(),
+                    n->get_remote_diff().c_str());
+            last_num = n->get_remote_state_num();
+          }
+        }
+      } catch (const CryptoException &e) {
+        fprintf(stderr, "Cryptographic error: %s\n", e.text.c_str());
       }
     }
   } else {
     struct termios saved_termios;
     struct termios the_termios;
 
-    if ( tcgetattr( STDIN_FILENO, &the_termios ) < 0 ) {
-      perror( "tcgetattr" );
-      exit( 1 );
+    if (tcgetattr(STDIN_FILENO, &the_termios) < 0) {
+      perror("tcgetattr");
+      exit(1);
     }
 
     saved_termios = the_termios;
 
-    cfmakeraw( &the_termios );
+    cfmakeraw(&the_termios);
 
-    if ( tcsetattr( STDIN_FILENO, TCSANOW, &the_termios ) < 0 ) {
-      perror( "tcsetattr" );
-      exit( 1 );
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &the_termios) < 0) {
+      perror("tcsetattr");
+      exit(1);
     }
 
     Select &sel = Select::get_instance();
 
-    while( true ) {
+    while (true) {
       sel.clear_fds();
-      sel.add_fd( STDIN_FILENO );
+      sel.add_fd(STDIN_FILENO);
 
-      std::vector< int > fd_list( n->fds() );
-      for ( std::vector< int >::const_iterator it = fd_list.begin();
-	    it != fd_list.end();
-	    it++ ) {
-	sel.add_fd( *it );
+      std::vector<int> fd_list(n->fds());
+      for (std::vector<int>::const_iterator it = fd_list.begin();
+           it != fd_list.end(); it++) {
+        sel.add_fd(*it);
       }
 
       try {
-	if ( sel.select( n->wait_time() ) < 0 ) {
-	  perror( "select" );
-	}
+        if (sel.select(n->wait_time()) < 0) {
+          perror("select");
+        }
 
-	n->tick();
+        n->tick();
 
-	if ( sel.read( STDIN_FILENO ) ) {
-	  char x;
-	  fatal_assert( read( STDIN_FILENO, &x, 1 ) == 1 );
-	  n->get_current_state().push_back( Parser::UserByte( x ) );
-	}
+        if (sel.read(STDIN_FILENO)) {
+          char x;
+          fatal_assert(read(STDIN_FILENO, &x, 1) == 1);
+          n->get_current_state().push_back(Parser::UserByte(x));
+        }
 
-	bool network_ready_to_read = false;
-	for ( std::vector< int >::const_iterator it = fd_list.begin();
-	      it != fd_list.end();
-	      it++ ) {
-	  if ( sel.read( *it ) ) {
-	    /* packet received from the network */
-	    /* we only read one socket each run */
-	    network_ready_to_read = true;
-	  }
+        bool network_ready_to_read = false;
+        for (std::vector<int>::const_iterator it = fd_list.begin();
+             it != fd_list.end(); it++) {
+          if (sel.read(*it)) {
+            /* packet received from the network */
+            /* we only read one socket each run */
+            network_ready_to_read = true;
+          }
 
-	  if ( sel.error( *it ) ) {
-	    break;
-	  }
-	}
+          if (sel.error(*it)) {
+            break;
+          }
+        }
 
-	if ( network_ready_to_read ) {
-	  n->recv();
-	}
-      } catch ( const NetworkException &e ) {
-	fprintf( stderr, "%s: %s\r\n", e.function.c_str(), strerror( e.the_errno ) );
-	break;
-      } catch ( const CryptoException &e ) {
-	fprintf( stderr, "Cryptographic error: %s\n", e.text.c_str() );
+        if (network_ready_to_read) {
+          n->recv();
+        }
+      } catch (const NetworkException &e) {
+        fprintf(stderr, "%s: %s\r\n", e.function.c_str(),
+                strerror(e.the_errno));
+        break;
+      } catch (const CryptoException &e) {
+        fprintf(stderr, "Cryptographic error: %s\n", e.text.c_str());
       }
     }
 
-    if ( tcsetattr( STDIN_FILENO, TCSANOW, &saved_termios ) < 0 ) {
-      perror( "tcsetattr" );
-      exit( 1 );
-    }    
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &saved_termios) < 0) {
+      perror("tcsetattr");
+      exit(1);
+    }
   }
 
   delete n;

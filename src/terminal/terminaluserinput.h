@@ -36,27 +36,23 @@
 #include <string>
 #include "parseraction.h"
 
-namespace Terminal {
-  class UserInput {
+namespace Terminal
+{
+  class UserInput
+  {
   public:
-    enum UserInputState {
-      Ground,
-      ESC,
-      SS3
-    };
+    enum UserInputState { Ground, ESC, SS3 };
 
   private:
     UserInputState state;
 
   public:
-    UserInput()
-      : state( Ground )
-    {}
+    UserInput() : state(Ground) {}
 
-    std::string input( const Parser::UserByte *act,
-		       bool application_mode_cursor_keys );
+    std::string input(const Parser::UserByte *act,
+                      bool application_mode_cursor_keys);
 
-    bool operator==( const UserInput &x ) const { return state == x.state; }
+    bool operator==(const UserInput &x) const { return state == x.state; }
   };
 }
 

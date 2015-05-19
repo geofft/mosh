@@ -37,7 +37,8 @@
 #include <string>
 #include <map>
 
-namespace Parser {
+namespace Parser
+{
   class Action;
   class Param;
   class Collect;
@@ -50,25 +51,28 @@ namespace Parser {
   class OSC_End;
 }
 
-namespace Terminal {
+namespace Terminal
+{
   class Framebuffer;
   class Dispatcher;
 
   enum Function_Type { ESCAPE, CSI, CONTROL };
 
-  class Function {
+  class Function
+  {
   public:
-    Function() : function( NULL ), clears_wrap_state( true ) {}
-    Function( Function_Type type, std::string dispatch_chars,
-	      void (*s_function)( Framebuffer *, Dispatcher * ),
-	      bool s_clears_wrap_state = true );
-    void (*function)( Framebuffer *, Dispatcher * );
+    Function() : function(NULL), clears_wrap_state(true) {}
+    Function(Function_Type type, std::string dispatch_chars,
+             void (*s_function)(Framebuffer *, Dispatcher *),
+             bool s_clears_wrap_state = true);
+    void (*function)(Framebuffer *, Dispatcher *);
     bool clears_wrap_state;
   };
 
   typedef std::map<std::string, Function> dispatch_map_t;
 
-  class DispatchRegistry {
+  class DispatchRegistry
+  {
   public:
     dispatch_map_t escape;
     dispatch_map_t CSI;
@@ -77,9 +81,10 @@ namespace Terminal {
     DispatchRegistry() : escape(), CSI(), control() {}
   };
 
-  DispatchRegistry & get_global_dispatch_registry( void );
+  DispatchRegistry &get_global_dispatch_registry(void);
 
-  class Dispatcher {
+  class Dispatcher
+  {
   private:
     std::string params;
     std::vector<int> parsed_params;
@@ -88,7 +93,7 @@ namespace Terminal {
     std::string dispatch_chars;
     std::vector<wchar_t> OSC_string; /* only used to set the window title */
 
-    void parse_params( void );
+    void parse_params(void);
 
   public:
     static const int PARAM_MAX = 65535;
@@ -97,24 +102,25 @@ namespace Terminal {
     std::string terminal_to_host; /* this is the reply string */
 
     Dispatcher();
-    int getparam( size_t N, int defaultval );
-    int param_count( void );
+    int getparam(size_t N, int defaultval);
+    int param_count(void);
 
-    void newparamchar( const Parser::Param *act );
-    void collect( const Parser::Collect *act );
-    void clear( const Parser::Clear *act );
-    
-    std::string str( void );
+    void newparamchar(const Parser::Param *act);
+    void collect(const Parser::Collect *act);
+    void clear(const Parser::Clear *act);
 
-    void dispatch( Function_Type type, const Parser::Action *act, Framebuffer *fb );
-    std::string get_dispatch_chars( void ) const { return dispatch_chars; }
-    std::vector<wchar_t> get_OSC_string( void ) const { return OSC_string; }
+    std::string str(void);
 
-    void OSC_put( const Parser::OSC_Put *act );
-    void OSC_start( const Parser::OSC_Start *act );
-    void OSC_dispatch( const Parser::OSC_End *act, Framebuffer *fb );
+    void dispatch(Function_Type type, const Parser::Action *act,
+                  Framebuffer *fb);
+    std::string get_dispatch_chars(void) const { return dispatch_chars; }
+    std::vector<wchar_t> get_OSC_string(void) const { return OSC_string; }
 
-    bool operator==( const Dispatcher &x ) const;
+    void OSC_put(const Parser::OSC_Put *act);
+    void OSC_start(const Parser::OSC_Start *act);
+    void OSC_dispatch(const Parser::OSC_End *act, Framebuffer *fb);
+
+    bool operator==(const Dispatcher &x) const;
   };
 }
 

@@ -35,7 +35,7 @@
 
 #include <stdint.h>
 
-void freeze_timestamp( void );
-uint64_t frozen_timestamp( void );
+void freeze_timestamp(void);
+uint64_t frozen_timestamp(void);
 
 #endif

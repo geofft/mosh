@@ -35,9 +35,11 @@
 
 #include "terminalframebuffer.h"
 
-namespace Terminal {
+namespace Terminal
+{
   /* variables used within a new_frame */
-  class FrameState {
+  class FrameState
+  {
   public:
     int x, y;
     bool force_next_put;
@@ -48,29 +50,29 @@ namespace Terminal {
 
     Framebuffer last_frame;
 
-    FrameState( const Framebuffer &s_last )
-      : x(0), y(0),
-	force_next_put( false ),
-	str(), cursor_x(0), cursor_y(0), current_rendition( 0 ),
-	last_frame( s_last )
+    FrameState(const Framebuffer &s_last)
+        : x(0), y(0), force_next_put(false), str(), cursor_x(0), cursor_y(0),
+          current_rendition(0), last_frame(s_last)
     {
-      str.reserve( 1024 );
+      str.reserve(1024);
     }
 
-    void append( const char * s ) { str.append( s ); }
-    void appendstring( const std::string &s ) { str.append( s ); }
+    void append(const char *s) { str.append(s); }
+    void appendstring(const std::string &s) { str.append(s); }
 
-    void append_silent_move( int y, int x );
+    void append_silent_move(int y, int x);
   };
 
-  class Display {
+  class Display
+  {
   private:
-    bool ti_flag( const char *capname ) const;
-    int ti_num( const char *capname ) const;
-    const char *ti_str( const char *capname ) const;
+    bool ti_flag(const char *capname) const;
+    int ti_num(const char *capname) const;
+    const char *ti_str(const char *capname) const;
 
     bool has_ech; /* erase character is part of vt200 but not supported by tmux
-		     (or by "screen" terminfo entry, which is what tmux advertises) */
+                     (or by "screen" terminfo entry, which is what tmux
+                     advertises) */
 
     bool has_bce; /* erases result in cell filled with background color */
 
@@ -80,17 +82,24 @@ namespace Terminal {
 
     const char *smcup, *rmcup; /* enter and exit alternate screen mode */
 
-    void put_cell( bool initialized, FrameState &frame, const Framebuffer &f ) const;
+    void put_cell(bool initialized, FrameState &frame,
+                  const Framebuffer &f) const;
 
   public:
-    void downgrade( Framebuffer &f ) const { if ( posterize_colors ) { f.posterize(); } }
+    void downgrade(Framebuffer &f) const
+    {
+      if (posterize_colors) {
+        f.posterize();
+      }
+    }
 
     std::string open() const;
     std::string close() const;
 
-    std::string new_frame( bool initialized, const Framebuffer &last, const Framebuffer &f ) const;
+    std::string new_frame(bool initialized, const Framebuffer &last,
+                          const Framebuffer &f) const;
 
-    Display( bool use_environment );
+    Display(bool use_environment);
   };
 }
 

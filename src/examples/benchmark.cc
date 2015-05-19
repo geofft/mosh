@@ -62,43 +62,42 @@ const int ITERATIONS = 100000;
 
 using namespace Terminal;
 
-int main( void )
+int main(void)
 {
   int fbmod = 0;
-  Framebuffer local_framebuffers[ 2 ] = { Framebuffer(80,24), Framebuffer(80,24) };
-  Framebuffer *local_framebuffer = &(local_framebuffers[ fbmod ]);
-  Framebuffer *new_state = &(local_framebuffers[ !fbmod ]);
+  Framebuffer local_framebuffers[2] = {Framebuffer(80, 24),
+                                       Framebuffer(80, 24)};
+  Framebuffer *local_framebuffer = &(local_framebuffers[fbmod]);
+  Framebuffer *new_state = &(local_framebuffers[!fbmod]);
   Overlay::OverlayManager overlays;
-  Display display( true );
-  Complete local_terminal( 80, 24 );
+  Display display(true);
+  Complete local_terminal(80, 24);
 
   /* Adopt native locale */
   set_native_locale();
-  fatal_assert( is_utf8_locale() );
+  fatal_assert(is_utf8_locale());
 
-  for ( int i = 0; i < ITERATIONS; i++ ) {
+  for (int i = 0; i < ITERATIONS; i++) {
     /* type a character */
-    overlays.get_prediction_engine().new_user_byte( i + 'x', *local_framebuffer );
+    overlays.get_prediction_engine().new_user_byte(i + 'x', *local_framebuffer);
 
     /* fetch target state */
     *new_state = local_terminal.get_fb();
 
     /* apply local overlays */
-    overlays.apply( *new_state );
+    overlays.apply(*new_state);
 
     /* calculate minimal difference from where we are */
-    const string diff( display.new_frame( false,
-					  *local_framebuffer,
-					  *new_state ) );
+    const string diff(display.new_frame(false, *local_framebuffer, *new_state));
 
     /* make sure to use diff */
-    if ( diff.size() > INT_MAX ) {
-      exit( 1 );
+    if (diff.size() > INT_MAX) {
+      exit(1);
     }
 
     fbmod = !fbmod;
-    local_framebuffer = &(local_framebuffers[ fbmod ]);
-    new_state = &(local_framebuffers[ !fbmod ]);
+    local_framebuffer = &(local_framebuffers[fbmod]);
+    new_state = &(local_framebuffers[!fbmod]);
   }
 
   return 0;

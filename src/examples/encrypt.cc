@@ -39,17 +39,17 @@
 using namespace Crypto;
 using namespace std;
 
-int main( int argc, char *argv[] )
+int main(int argc, char *argv[])
 {
-  if ( argc != 2 ) {
-    fprintf( stderr, "Usage: %s NONCE\n", argv[ 0 ] );
+  if (argc != 2) {
+    fprintf(stderr, "Usage: %s NONCE\n", argv[0]);
     return 1;
   }
 
   try {
     Base64Key key;
-    Session session( key );
-    Nonce nonce( myatoi( argv[ 1 ] ) );
+    Session session(key);
+    Nonce nonce(myatoi(argv[1]));
 
     /* Read input */
     ostringstream input;
@@ -57,14 +57,14 @@ int main( int argc, char *argv[] )
 
     /* Encrypt message */
 
-    string ciphertext = session.encrypt( Message( nonce, input.str() ) );
+    string ciphertext = session.encrypt(Message(nonce, input.str()));
 
     cerr << "Key: " << key.printable_key() << endl;
 
     cout << ciphertext;
-  } catch ( const CryptoException &e ) {
+  } catch (const CryptoException &e) {
     cerr << e.text << endl;
-    exit( 1 );
+    exit(1);
   }
 
   return 0;

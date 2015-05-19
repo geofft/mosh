@@ -39,43 +39,49 @@
 #include "parser.h"
 #include "terminal.h"
 
-/* This class represents the complete terminal -- a UTF8Parser feeding Actions to an Emulator. */
+/* This class represents the complete terminal -- a UTF8Parser feeding Actions
+ * to an Emulator. */
 
-namespace Terminal {
-  class Complete {
+namespace Terminal
+{
+  class Complete
+  {
   private:
     Parser::UTF8Parser parser;
     Terminal::Emulator terminal;
     Terminal::Display display;
 
-    typedef std::list< std::pair<uint64_t, uint64_t> > input_history_type;
+    typedef std::list<std::pair<uint64_t, uint64_t>> input_history_type;
     input_history_type input_history;
     uint64_t echo_ack;
 
     static const int ECHO_TIMEOUT = 50; /* for late ack */
 
   public:
-    Complete( size_t width, size_t height ) : parser(), terminal( width, height ), display( false ),
-					      input_history(), echo_ack( 0 ) {}
-    
-    std::string act( const std::string &str );
-    std::string act( const Parser::Action *act );
+    Complete(size_t width, size_t height)
+        : parser(), terminal(width, height), display(false), input_history(),
+          echo_ack(0)
+    {
+    }
 
-    const Framebuffer & get_fb( void ) const { return terminal.get_fb(); }
-    bool parser_grounded( void ) const { return parser.is_grounded(); }
+    std::string act(const std::string &str);
+    std::string act(const Parser::Action *act);
 
-    uint64_t get_echo_ack( void ) const { return echo_ack; }
-    bool set_echo_ack( uint64_t now );
-    void register_input_frame( uint64_t n, uint64_t now );
-    int wait_time( uint64_t now ) const;
+    const Framebuffer &get_fb(void) const { return terminal.get_fb(); }
+    bool parser_grounded(void) const { return parser.is_grounded(); }
+
+    uint64_t get_echo_ack(void) const { return echo_ack; }
+    bool set_echo_ack(uint64_t now);
+    void register_input_frame(uint64_t n, uint64_t now);
+    int wait_time(uint64_t now) const;
 
     /* interface for Network::Transport */
-    void subtract( const Complete * ) {}
-    std::string diff_from( const Complete &existing ) const;
-    void apply_string( std::string diff );
-    bool operator==( const Complete &x ) const;
+    void subtract(const Complete *) {}
+    std::string diff_from(const Complete &existing) const;
+    void apply_string(std::string diff);
+    bool operator==(const Complete &x) const;
 
-    bool compare( const Complete &other ) const;
+    bool compare(const Complete &other) const;
   };
 }
 

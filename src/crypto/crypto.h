@@ -41,78 +41,83 @@
 
 using std::string;
 
-long int myatoi( const char *str );
+long int myatoi(const char *str);
 
-namespace Crypto {
-  class CryptoException {
+namespace Crypto
+{
+  class CryptoException
+  {
   public:
     string text;
     bool fatal;
-    CryptoException( string s_text, bool s_fatal = false )
-      : text( s_text ), fatal( s_fatal ) {};
+    CryptoException(string s_text, bool s_fatal = false)
+        : text(s_text), fatal(s_fatal){};
   };
 
   /* 16-byte-aligned buffer, with length. */
-  class AlignedBuffer {
+  class AlignedBuffer
+  {
   private:
     size_t m_len;
     void *m_allocated;
     char *m_data;
 
   public:
-    AlignedBuffer( size_t len, const char *data = NULL );
+    AlignedBuffer(size_t len, const char *data = NULL);
 
-    ~AlignedBuffer() {
-      free( m_allocated );
-    }
+    ~AlignedBuffer() { free(m_allocated); }
 
-    char * data( void ) const { return m_data; }
-    size_t len( void )  const { return m_len;  }
+    char *data(void) const { return m_data; }
+    size_t len(void) const { return m_len; }
 
   private:
     /* Not implemented */
-    AlignedBuffer( const AlignedBuffer& );
-    AlignedBuffer& operator=( const AlignedBuffer& );
+    AlignedBuffer(const AlignedBuffer &);
+    AlignedBuffer &operator=(const AlignedBuffer &);
   };
 
-  class Base64Key {
+  class Base64Key
+  {
   private:
-    unsigned char key[ 16 ];
+    unsigned char key[16];
 
   public:
     Base64Key(); /* random key */
-    Base64Key( string printable_key );
-    string printable_key( void ) const;
-    unsigned char *data( void ) { return key; }
+    Base64Key(string printable_key);
+    string printable_key(void) const;
+    unsigned char *data(void) { return key; }
   };
 
-  class Nonce {
+  class Nonce
+  {
   public:
     static const int NONCE_LEN = 12;
 
   private:
-    char bytes[ NONCE_LEN ];
+    char bytes[NONCE_LEN];
 
   public:
-    Nonce( uint64_t val );
-    Nonce( char *s_bytes, size_t len );
-    
-    string cc_str( void ) const { return string( bytes + 4, 8 ); }
-    const char *data( void ) const { return bytes; }
-    uint64_t val( void );
+    Nonce(uint64_t val);
+    Nonce(char *s_bytes, size_t len);
+
+    string cc_str(void) const { return string(bytes + 4, 8); }
+    const char *data(void) const { return bytes; }
+    uint64_t val(void);
   };
-  
-  class Message {
+
+  class Message
+  {
   public:
     Nonce nonce;
     string text;
-    
-    Message( char *nonce_bytes, size_t nonce_len,
-	     char *text_bytes, size_t text_len );
-    Message( Nonce s_nonce, string s_text );
+
+    Message(char *nonce_bytes, size_t nonce_len, char *text_bytes,
+            size_t text_len);
+    Message(Nonce s_nonce, string s_text);
   };
-  
-  class Session {
+
+  class Session
+  {
   private:
     Base64Key key;
     AlignedBuffer ctx_buf;
@@ -122,22 +127,22 @@ namespace Crypto {
     AlignedBuffer plaintext_buffer;
     AlignedBuffer ciphertext_buffer;
     AlignedBuffer nonce_buffer;
-    
+
   public:
     static const int RECEIVE_MTU = 2048;
 
-    Session( Base64Key s_key );
+    Session(Base64Key s_key);
     ~Session();
-    
-    string encrypt( Message plaintext );
-    Message decrypt( string ciphertext );
-    
-    Session( const Session & );
-    Session & operator=( const Session & );
+
+    string encrypt(Message plaintext);
+    Message decrypt(string ciphertext);
+
+    Session(const Session &);
+    Session &operator=(const Session &);
   };
 
-  void disable_dumping_core( void );
-  void reenable_dumping_core( void );
+  void disable_dumping_core(void);
+  void reenable_dumping_core(void);
 }
 
 #endif

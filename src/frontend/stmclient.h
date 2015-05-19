@@ -42,7 +42,8 @@
 #include "user.h"
 #include "terminaloverlay.h"
 
-class STMClient {
+class STMClient
+{
 private:
   std::string ip;
   std::string port;
@@ -60,84 +61,81 @@ private:
 
   Terminal::Framebuffer *local_framebuffer, *new_state;
   Overlay::OverlayManager overlays;
-  Network::Transport< Network::UserStream, Terminal::Complete > *network;
+  Network::Transport<Network::UserStream, Terminal::Complete> *network;
   Terminal::Display display;
 
   std::wstring connecting_notification;
   bool repaint_requested, lf_entered, quit_sequence_started;
   bool clean_shutdown;
 
-  void main_init( void );
-  bool process_network_input( void );
-  bool process_user_input( int fd );
-  bool process_resize( void );
+  void main_init(void);
+  bool process_network_input(void);
+  bool process_user_input(int fd);
+  bool process_resize(void);
 
-  void output_new_frame( void );
+  void output_new_frame(void);
 
-  bool still_connecting( void ) const
+  bool still_connecting(void) const
   {
     /* Initially, network == NULL */
-    return network && ( network->get_remote_state_num() == 0 );
+    return network && (network->get_remote_state_num() == 0);
   }
 
-  void resume( void ); /* restore state after SIGCONT */
+  void resume(void); /* restore state after SIGCONT */
 
 public:
-  STMClient( const char *s_ip, const char *s_port, const char *s_key, const char *predict_mode )
-    : ip( s_ip ), port( s_port ), key( s_key ),
-    escape_key( 0x1E ), escape_pass_key( '^' ), escape_pass_key2( '^' ),
-    escape_requires_lf( false ), escape_key_help( L"?" ),
-      saved_termios(), raw_termios(),
-      window_size(),
-      local_framebuffer( NULL ),
-      new_state( NULL ),
-      overlays(),
-      network( NULL ),
-      display( true ), /* use TERM environment var to initialize display */
-      connecting_notification(),
-      repaint_requested( false ),
-      lf_entered( false ),
-      quit_sequence_started( false ),
-      clean_shutdown( false )
+  STMClient(const char *s_ip, const char *s_port, const char *s_key,
+            const char *predict_mode)
+      : ip(s_ip), port(s_port), key(s_key), escape_key(0x1E),
+        escape_pass_key('^'), escape_pass_key2('^'), escape_requires_lf(false),
+        escape_key_help(L"?"), saved_termios(), raw_termios(), window_size(),
+        local_framebuffer(NULL), new_state(NULL), overlays(), network(NULL),
+        display(true), /* use TERM environment var to initialize display */
+        connecting_notification(), repaint_requested(false), lf_entered(false),
+        quit_sequence_started(false), clean_shutdown(false)
   {
-    if ( predict_mode ) {
-      if ( !strcmp( predict_mode, "always" ) ) {
-	overlays.get_prediction_engine().set_display_preference( Overlay::PredictionEngine::Always );
-      } else if ( !strcmp( predict_mode, "never" ) ) {
-	overlays.get_prediction_engine().set_display_preference( Overlay::PredictionEngine::Never );
-      } else if ( !strcmp( predict_mode, "adaptive" ) ) {
-	overlays.get_prediction_engine().set_display_preference( Overlay::PredictionEngine::Adaptive );
-      } else if ( !strcmp( predict_mode, "experimental" ) ) {
-	overlays.get_prediction_engine().set_display_preference( Overlay::PredictionEngine::Experimental );
+    if (predict_mode) {
+      if (!strcmp(predict_mode, "always")) {
+        overlays.get_prediction_engine().set_display_preference(
+            Overlay::PredictionEngine::Always);
+      } else if (!strcmp(predict_mode, "never")) {
+        overlays.get_prediction_engine().set_display_preference(
+            Overlay::PredictionEngine::Never);
+      } else if (!strcmp(predict_mode, "adaptive")) {
+        overlays.get_prediction_engine().set_display_preference(
+            Overlay::PredictionEngine::Adaptive);
+      } else if (!strcmp(predict_mode, "experimental")) {
+        overlays.get_prediction_engine().set_display_preference(
+            Overlay::PredictionEngine::Experimental);
       } else {
-	fprintf( stderr, "Unknown prediction mode %s.\n", predict_mode );
-	exit( 1 );
+        fprintf(stderr, "Unknown prediction mode %s.\n", predict_mode);
+        exit(1);
       }
     }
   }
 
-  void init( void );
-  void shutdown( void );
-  void main( void );
+  void init(void);
+  void shutdown(void);
+  void main(void);
 
   ~STMClient()
   {
-    if ( local_framebuffer != NULL ) {
+    if (local_framebuffer != NULL) {
       delete local_framebuffer;
     }
 
-    if ( new_state != NULL ) {
+    if (new_state != NULL) {
       delete new_state;
     }
 
-    if ( network != NULL ) {
+    if (network != NULL) {
       delete network;
     }
   }
 
   /* unused */
-  STMClient( const STMClient & );
-  STMClient & operator=( const STMClient & );
+  STMClient(const STMClient &);
+  STMClient &operator=(const STMClient &);
 };
 
 #endif

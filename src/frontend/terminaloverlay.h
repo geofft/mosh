@@ -38,6 +38,7 @@
 #include <vector>
 #include <limits.h>
 #include <exception>
+#include <stdint.h>
 
 namespace Parser {
   class UTF8Parser;
